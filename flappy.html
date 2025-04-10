@@ -12,13 +12,15 @@
       height: 100vh;
       font-family: sans-serif;
       flex-direction: column;
+      user-select: none;
     }
     canvas {
       background: #fff;
       border: 2px solid #000;
+      touch-action: manipulation;
     }
     #score {
-      margin: 10px;
+      margin: 5px;
       font-size: 20px;
       color: white;
     }
@@ -39,14 +41,21 @@
 </head>
 <body>
   <h1>🐦 Flappy Bird</h1>
-  <div id="score">Score: 0</div>
+  <div id="score">Score: 0 | High Score: 0</div>
   <canvas id="game" width="320" height="480"></canvas>
   <a id="back-btn" href="index.html">← Back to Menu</a>
+
+  <!-- Sounds -->
+  <audio id="flap-sound" src="https://cdn.pixabay.com/audio/2022/03/22/audio_b9f01e8d90.mp3"></audio>
+  <audio id="hit-sound" src="https://cdn.pixabay.com/audio/2022/03/15/audio_17449e0e2a.mp3"></audio>
 
   <script>
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
     const scoreDisplay = document.getElementById("score");
+
+    const flapSound = document.getElementById("flap-sound");
+    const hitSound = document.getElementById("hit-sound");
 
     let frames = 0;
     const DEGREE = Math.PI / 180;
@@ -74,6 +83,8 @@
       },
       flap() {
         this.velocity = this.lift;
+        flapSound.currentTime = 0;
+        flapSound.play();
       }
     };
 
@@ -82,7 +93,7 @@
     const gap = 120;
     let pipeTimer = 0;
     let score = 0;
-    let passedPipe = false;
+    let highScore = parseInt(localStorage.getItem("highScore")) || 0;
 
     function drawPipes() {
       ctx.fillStyle = "green";
@@ -103,7 +114,7 @@
       pipes.forEach(pipe => {
         pipe.x -= 2;
 
-        // Increase score if bird passed the pipe
+        // Score counting
         if (!pipe.passed && pipe.x + pipeWidth < bird.x) {
           pipe.passed = true;
           score++;
@@ -111,14 +122,18 @@
         }
       });
 
-      // Remove off-screen pipes
+      // Clean up
       while (pipes.length && pipes[0].x + pipeWidth < 0) {
         pipes.shift();
       }
     }
 
     function updateScore() {
-      scoreDisplay.textContent = `Score: ${score}`;
+      if (score > highScore) {
+        highScore = score;
+        localStorage.setItem("highScore", highScore);
+      }
+      scoreDisplay.textContent = `Score: ${score} | High Score: ${highScore}`;
     }
 
     function checkCollision() {
@@ -131,8 +146,16 @@
             bird.y + bird.h > pipe.top + gap
           )
         ) {
+          hitSound.currentTime = 0;
+          hitSound.play();
           resetGame();
         }
+      }
+
+      if (bird.y + bird.h >= canvas.height) {
+        hitSound.currentTime = 0;
+        hitSound.play();
+        resetGame();
       }
     }
 
@@ -155,10 +178,14 @@
       requestAnimationFrame(loop);
     }
 
+    // Controls: keyboard + tap
     document.addEventListener("keydown", e => {
       if (e.code === "Space") bird.flap();
     });
+    canvas.addEventListener("click", () => bird.flap());
+    canvas.addEventListener("touchstart", () => bird.flap());
 
+    updateScore();
     loop();
   </script>
 </body>
