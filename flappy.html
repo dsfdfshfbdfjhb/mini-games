@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Flappy Bird</title>
+  <style>
+    body {
+      background: #70c5ce;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      font-family: sans-serif;
+      flex-direction: column;
+    }
+    canvas {
+      background: #fff;
+      border: 2px solid #000;
+    }
+  </style>
+</head>
+<body>
+  <h1>🐦 Flappy Bird</h1>
+  <canvas id="game" width="320" height="480"></canvas>
+
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+
+    let frames = 0;
+    const DEGREE = Math.PI / 180;
+
+    const bird = {
+      x: 50,
+      y: 150,
+      w: 30,
+      h: 30,
+      gravity: 0.25,
+      lift: -4.6,
+      velocity: 0,
+      draw() {
+        ctx.fillStyle = "yellow";
+        ctx.fillRect(this.x, this.y, this.w, this.h);
+      },
+      update() {
+        this.velocity += this.gravity;
+        this.y += this.velocity;
+
+        if (this.y + this.h >= canvas.height) {
+          this.y = canvas.height - this.h;
+          this.velocity = 0;
+        }
+      },
+      flap() {
+        this.velocity = this.lift;
+      }
+    };
+
+    const pipes = [];
+    const pipeWidth = 50;
+    const gap = 120;
+    let pipeTimer = 0;
+
+    function drawPipes() {
+      ctx.fillStyle = "green";
+      pipes.forEach(pipe => {
+        ctx.fillRect(pipe.x, 0, pipeWidth, pipe.top);
+        ctx.fillRect(pipe.x, pipe.top + gap, pipeWidth, canvas.height - pipe.top - gap);
+      });
+    }
+
+    function updatePipes() {
+      pipeTimer++;
+      if (pipeTimer > 90) {
+        const top = Math.floor(Math.random() * 200) + 50;
+        pipes.push({ x: canvas.width, top });
+        pipeTimer = 0;
+      }
+
+      pipes.forEach(pipe => {
+        pipe.x -= 2;
+      });
+
+      pipes.filter(pipe => pipe.x + pipeWidth > 0);
+    }
+
+    function checkCollision() {
+      for (const pipe of pipes) {
+        if (
+          bird.x < pipe.x + pipeWidth &&
+          bird.x + bird.w > pipe.x &&
+          (
+            bird.y < pipe.top ||
+            bird.y + bird.h > pipe.top + gap
+          )
+        ) {
+          resetGame();
+        }
+      }
+    }
+
+    function resetGame() {
+      pipes.length = 0;
+      bird.y = 150;
+      bird.velocity = 0;
+    }
+
+    function loop() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      bird.draw();
+      drawPipes();
+      bird.update();
+      updatePipes();
+      checkCollision();
+      frames++;
+      requestAnimationFrame(loop);
+    }
+
+    document.addEventListener("keydown", e => {
+      if (e.code === "Space") bird.flap();
+    });
+
+    loop();
+  </script>
+</body>
+</html>
