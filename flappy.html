@@ -17,15 +17,36 @@
       background: #fff;
       border: 2px solid #000;
     }
+    #score {
+      margin: 10px;
+      font-size: 20px;
+      color: white;
+    }
+    #back-btn {
+      margin-top: 10px;
+      padding: 10px 20px;
+      background: #fff;
+      border: 2px solid #000;
+      border-radius: 8px;
+      text-decoration: none;
+      color: black;
+      font-weight: bold;
+    }
+    #back-btn:hover {
+      background: #e0f7ff;
+    }
   </style>
 </head>
 <body>
   <h1>🐦 Flappy Bird</h1>
+  <div id="score">Score: 0</div>
   <canvas id="game" width="320" height="480"></canvas>
+  <a id="back-btn" href="index.html">← Back to Menu</a>
 
   <script>
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
+    const scoreDisplay = document.getElementById("score");
 
     let frames = 0;
     const DEGREE = Math.PI / 180;
@@ -60,6 +81,8 @@
     const pipeWidth = 50;
     const gap = 120;
     let pipeTimer = 0;
+    let score = 0;
+    let passedPipe = false;
 
     function drawPipes() {
       ctx.fillStyle = "green";
@@ -73,15 +96,29 @@
       pipeTimer++;
       if (pipeTimer > 90) {
         const top = Math.floor(Math.random() * 200) + 50;
-        pipes.push({ x: canvas.width, top });
+        pipes.push({ x: canvas.width, top, passed: false });
         pipeTimer = 0;
       }
 
       pipes.forEach(pipe => {
         pipe.x -= 2;
+
+        // Increase score if bird passed the pipe
+        if (!pipe.passed && pipe.x + pipeWidth < bird.x) {
+          pipe.passed = true;
+          score++;
+          updateScore();
+        }
       });
 
-      pipes.filter(pipe => pipe.x + pipeWidth > 0);
+      // Remove off-screen pipes
+      while (pipes.length && pipes[0].x + pipeWidth < 0) {
+        pipes.shift();
+      }
+    }
+
+    function updateScore() {
+      scoreDisplay.textContent = `Score: ${score}`;
     }
 
     function checkCollision() {
@@ -103,6 +140,8 @@
       pipes.length = 0;
       bird.y = 150;
       bird.velocity = 0;
+      score = 0;
+      updateScore();
     }
 
     function loop() {
