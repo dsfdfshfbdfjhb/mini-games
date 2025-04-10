@@ -5,19 +5,19 @@
   <title>Flappy Bird</title>
   <style>
     body {
-      background: #000;
-      margin: 0;
+      background: #70c5ce;
       display: flex;
-      flex-direction: column;
+      justify-content: center;
       align-items: center;
+      height: 100vh;
       font-family: sans-serif;
+      flex-direction: column;
       user-select: none;
     }
     canvas {
-      background: #70c5ce;
-      display: block;
-      touch-action: manipulation;
+      background: #fff;
       border: 2px solid #000;
+      touch-action: manipulation;
     }
     #score {
       margin: 5px;
@@ -25,7 +25,7 @@
       color: white;
     }
     #back-btn {
-      margin: 10px;
+      margin-top: 10px;
       padding: 10px 20px;
       background: #fff;
       border: 2px solid #000;
@@ -45,6 +45,7 @@
   <canvas id="game" width="320" height="480"></canvas>
   <a id="back-btn" href="index.html">← Back to Menu</a>
 
+  <!-- Sounds -->
   <audio id="flap-sound" src="https://cdn.pixabay.com/audio/2022/03/22/audio_b9f01e8d90.mp3"></audio>
   <audio id="hit-sound" src="https://cdn.pixabay.com/audio/2022/03/15/audio_17449e0e2a.mp3"></audio>
 
@@ -52,25 +53,21 @@
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
     const scoreDisplay = document.getElementById("score");
+
     const flapSound = document.getElementById("flap-sound");
     const hitSound = document.getElementById("hit-sound");
 
     let frames = 0;
     const DEGREE = Math.PI / 180;
 
-    const game = {
-      state: "play"
-    };
-
     const bird = {
       x: 50,
       y: 150,
-      w: 34,
-      h: 24,
+      w: 30,
+      h: 30,
       gravity: 0.25,
       lift: -4.6,
       velocity: 0,
-      frame: 0,
       draw() {
         ctx.fillStyle = "yellow";
         ctx.fillRect(this.x, this.y, this.w, this.h);
@@ -92,26 +89,44 @@
     };
 
     const pipes = [];
-    const pipe = {
-      w: 52,
-      h: 320,
-      gap: 100,
-      drawPipe(x, y, isTop) {
-        ctx.fillStyle = isTop ? "green" : "darkgreen";
-        ctx.fillRect(x, y, this.w, this.h);
-      }
-    };
-
-    const background = {
-      draw() {
-        ctx.fillStyle = "#70c5ce";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-      }
-    };
-
+    const pipeWidth = 50;
+    const gap = 120;
     let pipeTimer = 0;
     let score = 0;
     let highScore = parseInt(localStorage.getItem("highScore")) || 0;
+
+    function drawPipes() {
+      ctx.fillStyle = "green";
+      pipes.forEach(pipe => {
+        ctx.fillRect(pipe.x, 0, pipeWidth, pipe.top);
+        ctx.fillRect(pipe.x, pipe.top + gap, pipeWidth, canvas.height - pipe.top - gap);
+      });
+    }
+
+    function updatePipes() {
+      pipeTimer++;
+      if (pipeTimer > 90) {
+        const top = Math.floor(Math.random() * 200) + 50;
+        pipes.push({ x: canvas.width, top, passed: false });
+        pipeTimer = 0;
+      }
+
+      pipes.forEach(pipe => {
+        pipe.x -= 2;
+
+        // Score counting
+        if (!pipe.passed && pipe.x + pipeWidth < bird.x) {
+          pipe.passed = true;
+          score++;
+          updateScore();
+        }
+      });
+
+      // Clean up
+      while (pipes.length && pipes[0].x + pipeWidth < 0) {
+        pipes.shift();
+      }
+    }
 
     function updateScore() {
       if (score > highScore) {
@@ -119,6 +134,29 @@
         localStorage.setItem("highScore", highScore);
       }
       scoreDisplay.textContent = `Score: ${score} | High Score: ${highScore}`;
+    }
+
+    function checkCollision() {
+      for (const pipe of pipes) {
+        if (
+          bird.x < pipe.x + pipeWidth &&
+          bird.x + bird.w > pipe.x &&
+          (
+            bird.y < pipe.top ||
+            bird.y + bird.h > pipe.top + gap
+          )
+        ) {
+          hitSound.currentTime = 0;
+          hitSound.play();
+          resetGame();
+        }
+      }
+
+      if (bird.y + bird.h >= canvas.height) {
+        hitSound.currentTime = 0;
+        hitSound.play();
+        resetGame();
+      }
     }
 
     function resetGame() {
@@ -129,60 +167,18 @@
       updateScore();
     }
 
-    function updatePipes() {
-      pipeTimer++;
-      if (pipeTimer > 90) {
-        const top = Math.floor(Math.random() * 180) + 20;
-        pipes.push({ x: canvas.width, top, passed: false });
-        pipeTimer = 0;
-      }
-
-      for (let i = 0; i < pipes.length; i++) {
-        const p = pipes[i];
-        p.x -= 2;
-
-        // Draw top
-        pipe.drawPipe(p.x, p.top - pipe.h, true);
-        // Draw bottom
-        pipe.drawPipe(p.x, p.top + pipe.gap, false);
-
-        if (!p.passed && p.x + pipe.w < bird.x) {
-          p.passed = true;
-          score++;
-          updateScore();
-        }
-
-        // Collision
-        if (
-          bird.x < p.x + pipe.w &&
-          bird.x + bird.w > p.x &&
-          (
-            bird.y < p.top ||
-            bird.y + bird.h > p.top + pipe.gap
-          )
-        ) {
-          hitSound.currentTime = 0;
-          hitSound.play();
-          resetGame();
-        }
-      }
-
-      // Remove off-screen pipes
-      if (pipes.length && pipes[0].x + pipe.w < 0) {
-        pipes.shift();
-      }
-    }
-
     function loop() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      background.draw();
       bird.draw();
+      drawPipes();
       bird.update();
       updatePipes();
+      checkCollision();
       frames++;
       requestAnimationFrame(loop);
     }
 
+    // Controls: keyboard + tap
     document.addEventListener("keydown", e => {
       if (e.code === "Space") bird.flap();
     });
